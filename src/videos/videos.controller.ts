@@ -22,8 +22,11 @@ import { AppConfigService } from '../config/app-config.service.js';
 import { AuthGuard } from '../auth/auth.guard.js';
 import type { Request, Response } from 'express';
 
-// Setup temporary upload storage for streaming direct to disk
-const tempUploadDir = path.join(os.tmpdir(), 'ar_booth_uploads');
+// Setup temporary upload storage inside application storage directory to prevent cross-device (EXDEV) errors
+const storageBase = process.env.STORAGE_DIR
+  ? path.resolve(process.cwd(), process.env.STORAGE_DIR)
+  : path.resolve(process.cwd(), 'uploads');
+const tempUploadDir = path.join(storageBase, 'temp');
 if (!fs.existsSync(tempUploadDir)) {
   fs.mkdirSync(tempUploadDir, { recursive: true });
 }

@@ -71,7 +71,19 @@ export class VideosService {
 
     try {
       if (file.path) {
-        fs.renameSync(file.path, targetFilePath);
+        try {
+          fs.renameSync(file.path, targetFilePath);
+        } catch (renameErr: any) {
+          // EXDEV: Cross-device link not permitted (e.g. /tmp mounted on different partition/tmpfs)
+          if (renameErr.code === 'EXDEV' || renameErr.message?.includes('cross-device')) {
+            fs.copyFileSync(file.path, targetFilePath);
+            try {
+              fs.unlinkSync(file.path);
+            } catch (_) {}
+          } else {
+            throw renameErr;
+          }
+        }
       } else if (file.buffer) {
         fs.writeFileSync(targetFilePath, file.buffer);
       } else {
