@@ -20,7 +20,28 @@ export class DashboardController {
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script>
+    (function() {
+      try {
+        if (localStorage.getItem('booth_auth_token')) {
+          document.documentElement.classList.add('is-authenticated');
+        }
+      } catch (e) {}
+    })();
+  </script>
   <style>
+    /* Instant Auth State - Completely eliminates login screen flicker on refresh */
+    html.is-authenticated #loginScreen {
+      display: none !important;
+      opacity: 0 !important;
+      visibility: hidden !important;
+      pointer-events: none !important;
+    }
+    html.is-authenticated #dashboardContainer {
+      filter: none !important;
+      opacity: 1 !important;
+    }
+
     :root {
       --bg: #090d16;
       --surface: rgba(17, 24, 39, 0.75);
@@ -260,32 +281,6 @@ export class DashboardController {
       40%, 80% { transform: translateX(6px); }
     }
 
-    .quick-creds-hint {
-      margin-top: 1.25rem;
-      padding-top: 1.25rem;
-      border-top: 1px solid var(--surface-border);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: 0.78rem;
-      color: var(--text-dim);
-    }
-
-    .quick-fill-btn {
-      background: rgba(99, 102, 241, 0.12);
-      border: 1px solid rgba(99, 102, 241, 0.3);
-      color: var(--primary-light);
-      padding: 0.25rem 0.6rem;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 0.75rem;
-      font-weight: 600;
-      transition: all 0.2s;
-    }
-
-    .quick-fill-btn:hover {
-      background: rgba(99, 102, 241, 0.25);
-    }
 
     /* Main Dashboard Layout */
     .dashboard-container {
@@ -975,7 +970,7 @@ export class DashboardController {
             <span class="input-icon">
               <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
             </span>
-            <input type="text" id="loginUser" class="login-input" placeholder="e.g. ${defaultUser}" value="${defaultUser}" required autofocus>
+            <input type="text" id="loginUser" class="login-input" placeholder="Username" required autofocus>
           </div>
         </div>
 
@@ -985,7 +980,7 @@ export class DashboardController {
             <span class="input-icon">
               <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
             </span>
-            <input type="password" id="loginPass" class="login-input" placeholder="Enter password" required>
+            <input type="password" id="loginPass" class="login-input" placeholder="Password" required>
             <button type="button" id="btnTogglePassword" class="btn-toggle-pwd" title="Show/Hide Password">
               <svg id="eyeIcon" width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
             </button>
@@ -996,11 +991,6 @@ export class DashboardController {
           <span>Sign In to Dashboard</span>
           <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
         </button>
-
-        <div class="quick-creds-hint">
-          <span>Default: <strong>${defaultUser}</strong> / <strong>admin123</strong></span>
-          <button type="button" id="btnQuickFill" class="quick-fill-btn">Auto-Fill</button>
-        </div>
       </form>
     </div>
   </div>
@@ -1374,6 +1364,7 @@ export class DashboardController {
     }
 
     function showLoginScreen(errorMessage = '') {
+      document.documentElement.classList.remove('is-authenticated');
       setStoredToken('');
       if (refreshInterval) {
         clearInterval(refreshInterval);
@@ -1394,6 +1385,7 @@ export class DashboardController {
     }
 
     function hideLoginScreen(username = 'Admin') {
+      document.documentElement.classList.add('is-authenticated');
       const loginScreen = document.getElementById('loginScreen');
       const dashboard = document.getElementById('dashboardContainer');
       loginScreen.classList.add('hidden');
@@ -1878,12 +1870,6 @@ export class DashboardController {
         const passInput = document.getElementById('loginPass');
         const isPass = passInput.type === 'password';
         passInput.type = isPass ? 'text' : 'password';
-      });
-
-      // Quick Fill Demo Credentials
-      document.getElementById('btnQuickFill').addEventListener('click', () => {
-        document.getElementById('loginUser').value = '${defaultUser}';
-        document.getElementById('loginPass').value = 'admin123';
       });
 
       // Logout Button
