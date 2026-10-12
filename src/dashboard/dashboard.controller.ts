@@ -1025,7 +1025,7 @@ export class DashboardController {
           Refresh
         </button>
 
-        <button id="btnOpenUploadModal" class="btn btn-outline" style="border-color: rgba(99, 102, 241, 0.4); color: var(--primary-light);">
+        <button id="btnOpenUploadModal" class="btn btn-outline" style="display: none; border-color: rgba(99, 102, 241, 0.4); color: var(--primary-light);">
           <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
           Upload Video
         </button>
