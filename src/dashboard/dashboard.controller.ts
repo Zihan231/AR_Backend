@@ -770,7 +770,7 @@ export class DashboardController {
     }
 
     .date-filter {
-      background: rgba(255, 255, 255, 0.05);
+      background: #111827;
       border: 1px solid var(--surface-border);
       border-radius: 8px;
       padding: 0.5rem 0.75rem;
@@ -778,6 +778,25 @@ export class DashboardController {
       font-size: 0.85rem;
       outline: none;
       font-family: inherit;
+      color-scheme: dark;
+    }
+
+    .date-filter:focus {
+      border-color: var(--primary);
+    }
+
+    select.date-filter,
+    select {
+      color-scheme: dark;
+      background-color: #111827;
+      color: var(--text);
+    }
+
+    select option,
+    .date-filter option {
+      background-color: #111827;
+      color: #f8fafc;
+      padding: 0.5rem;
     }
 
     .table-container {
@@ -1760,16 +1779,18 @@ export class DashboardController {
     }
 
     async function loadVideos() {
-      const search = document.getElementById('searchInput').value;
+      const searchInputEl = document.getElementById('searchInput');
+      const search = searchInputEl ? searchInputEl.value : '';
       const tbody = document.getElementById('videosTableBody');
+      if (!tbody) return;
 
       try {
         const params = new URLSearchParams({
-          page: currentPage,
-          limit: 10,
+          page: String(currentPage),
+          limit: '10',
           search: search || '',
-          sortBy: currentSortBy,
-          sortOrder: currentSortOrder,
+          sortBy: currentSortBy || 'created_at',
+          sortOrder: currentSortOrder || 'DESC',
         });
 
         if (currentStartDate) params.set('startDate', currentStartDate);
@@ -1778,43 +1799,57 @@ export class DashboardController {
         if (currentLocationFilter) params.set('location', currentLocationFilter);
 
         const res = await fetchWithAuth('/api/videos?' + params.toString());
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.message || ('Server returned HTTP ' + res.status));
+        }
+
         const data = await res.json();
 
-        if (data.items.length === 0) {
+        if (!data || !data.items || data.items.length === 0) {
           currentVideosList = [];
           tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; color: var(--text-dim); padding: 2.5rem;">No recordings found for the selected period.</td></tr>';
-          document.getElementById('pageInfo').textContent = 'Showing 0 of 0 videos';
+          const pageInfoEl = document.getElementById('pageInfo');
+          if (pageInfoEl) pageInfoEl.textContent = 'Showing 0 of 0 videos';
+          const btnPrevEl = document.getElementById('btnPrev');
+          const btnNextEl = document.getElementById('btnNext');
+          if (btnPrevEl) btnPrevEl.disabled = true;
+          if (btnNextEl) btnNextEl.disabled = true;
           return;
         }
 
         currentVideosList = data.items || [];
         tbody.innerHTML = currentVideosList.map((v, idx) => {
-          const formattedDate = new Date(v.createdAt).toLocaleString('en-US', {
+          const formattedDate = v.createdAt ? new Date(v.createdAt).toLocaleString('en-US', {
             month: 'short',
             day: 'numeric',
             hour: '2-digit',
             minute: '2-digit'
-          });
-          const originalOrFile = escapeHtml(v.originalName || v.filename);
+          }) : '&mdash;';
+          const originalOrFile = escapeHtml(v.originalName || v.filename || 'Untitled');
           const eventHtml = v.event ? ('<span class="badge-event">' + escapeHtml(v.event) + '</span>') : '<span style="color: var(--text-dim);">&mdash;</span>';
           const locationHtml = v.location ? ('<span class="badge-location">&#x1F4CD; ' + escapeHtml(v.location) + '</span>') : '<span style="color: var(--text-dim);">&mdash;</span>';
           const noteHtml = v.note ? ('<span class="note-snippet" title="' + escapeHtml(v.note) + '">' + escapeHtml(v.note.length > 25 ? (v.note.slice(0, 25) + '...') : v.note) + '</span>') : '<span style="color: var(--text-dim);">&mdash;</span>';
+          const tokenStr = v.token ? (escapeHtml(v.token.slice(0, 8)) + '...') : '&mdash;';
+          const sizeFormatted = v.sizeFormatted || (v.sizeBytes ? (Math.round(v.sizeBytes / 1024) + ' KB') : '0 B');
+          const downloadCount = v.downloadCount != null ? v.downloadCount : 0;
+          const downloadUrl = v.downloadUrl || ('/api/videos/' + (v.token || '') + '/download');
 
           return '<tr>' +
-            '<td><span class="token-tag">' + v.token.slice(0, 8) + '...</span></td>' +
+            '<td><span class="token-tag">' + tokenStr + '</span></td>' +
             '<td>' + eventHtml + '</td>' +
             '<td>' + locationHtml + '</td>' +
             '<td><strong>' + originalOrFile + '</strong></td>' +
-            '<td>' + v.sizeFormatted + '</td>' +
+            '<td>' + sizeFormatted + '</td>' +
             '<td style="color: var(--text-muted); font-size: 0.82rem;">' + formattedDate + '</td>' +
-            '<td><span style="display: inline-flex; align-items: center; gap: 0.25rem;"><span style="color: #10b981;">&darr;</span> ' + v.downloadCount + '</span></td>' +
+            '<td><span style="display: inline-flex; align-items: center; gap: 0.25rem;"><span style="color: #10b981;">&darr;</span> ' + downloadCount + '</span></td>' +
             '<td>' + noteHtml + '</td>' +
             '<td>' +
               '<div class="actions-cell">' +
                 '<button class="btn-action" onclick="actionPreview(' + idx + ')">Preview</button>' +
                 '<button class="btn-action" onclick="actionQr(' + idx + ')">QR</button>' +
                 '<button class="btn-action" onclick="actionCopy(' + idx + ')">Copy</button>' +
-                '<a href="' + v.downloadUrl + '" class="btn-action" download>Save</a>' +
+                '<a href="' + downloadUrl + '" class="btn-action" download>Save</a>' +
                 '<button class="btn-action btn-delete" onclick="actionDelete(' + idx + ')">Delete</button>' +
               '</div>' +
             '</td>' +
@@ -1823,12 +1858,19 @@ export class DashboardController {
 
         const startIdx = (data.page - 1) * data.limit + 1;
         const endIdx = Math.min(data.page * data.limit, data.total);
-        document.getElementById('pageInfo').textContent = 'Showing ' + startIdx + '-' + endIdx + ' of ' + data.total + ' videos';
+        const pageInfoEl = document.getElementById('pageInfo');
+        if (pageInfoEl) pageInfoEl.textContent = 'Showing ' + startIdx + '-' + endIdx + ' of ' + data.total + ' videos';
 
-        document.getElementById('btnPrev').disabled = currentPage <= 1;
-        document.getElementById('btnNext').disabled = currentPage >= data.totalPages;
+        const btnPrevEl = document.getElementById('btnPrev');
+        const btnNextEl = document.getElementById('btnNext');
+        if (btnPrevEl) btnPrevEl.disabled = currentPage <= 1;
+        if (btnNextEl) btnNextEl.disabled = currentPage >= (data.totalPages || 1);
       } catch (err) {
-        tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; color: var(--rose); padding: 2rem;">Error loading videos.</td></tr>';
+        console.error('loadVideos error:', err);
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; color: var(--rose); padding: 2rem;">' +
+          '<div>Error loading videos: ' + escapeHtml(err.message || 'Please check connection or sign in again.') + '</div>' +
+          '<div style="margin-top: 0.6rem;"><button class="btn btn-outline" style="padding: 0.35rem 0.85rem; font-size: 0.82rem; cursor: pointer;" onclick="loadVideos()">&#x21bb; Retry</button></div>' +
+        '</td></tr>';
       }
     }
 
@@ -2216,6 +2258,18 @@ export class DashboardController {
         currentPage = 1;
         loadVideos();
       });
+
+      const dateFilterEl = document.getElementById('dateFilter');
+      if (dateFilterEl) {
+        dateFilterEl.addEventListener('change', (e) => {
+          const val = e.target.value;
+          if (val) {
+            applyDateFilter('custom', val, val, val);
+          } else {
+            resetDateFilter();
+          }
+        });
+      }
 
       // Locations Modal listeners
       document.getElementById('btnOpenLocationsModal').addEventListener('click', () => {
