@@ -29,6 +29,9 @@ export interface UploadResponse {
   originalName: string;
   sizeBytes: number;
   createdAt: string;
+  location?: string | null;
+  event?: string | null;
+  note?: string | null;
 }
 
 @Injectable()
@@ -48,6 +51,7 @@ export class VideosService {
     file: Express.Multer.File,
     clientIp?: string,
     userAgent?: string,
+    metadata?: { location?: string; event?: string; note?: string },
   ): Promise<UploadResponse> {
     if (!file) {
       throw new BadRequestException('No video file provided');
@@ -117,6 +121,10 @@ export class VideosService {
 
     const fileSize = file.size || (fs.existsSync(targetFilePath) ? fs.statSync(targetFilePath).size : 0);
 
+    const locationVal = metadata?.location && metadata.location.trim() !== '' ? metadata.location.trim() : null;
+    const eventVal = metadata?.event && metadata.event.trim() !== '' ? metadata.event.trim() : null;
+    const noteVal = metadata?.note && metadata.note.trim() !== '' ? metadata.note.trim() : null;
+
     // Save record to database using TypeORM
     const videoEntity = this.videoRepo.create({
       token,
@@ -131,11 +139,14 @@ export class VideosService {
       download_count: 0,
       client_ip: clientIp || null,
       user_agent: userAgent || null,
+      location: locationVal,
+      event: eventVal,
+      note: noteVal,
     });
 
     await this.videoRepo.save(videoEntity);
 
-    this.logger.log(`Video uploaded successfully. Token: ${token}, Size: ${fileSize} bytes`);
+    this.logger.log(`Video uploaded successfully. Token: ${token}, Size: ${fileSize} bytes, Event: ${eventVal || 'N/A'}, Location: ${locationVal || 'N/A'}`);
 
     return {
       success: true,
@@ -149,6 +160,9 @@ export class VideosService {
       originalName: file.originalname || targetFilename,
       sizeBytes: fileSize,
       createdAt: isoString,
+      location: locationVal,
+      event: eventVal,
+      note: noteVal,
     };
   }
 

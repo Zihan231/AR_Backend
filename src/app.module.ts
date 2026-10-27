@@ -6,6 +6,7 @@ import { VideosModule } from './videos/videos.module.js';
 import { PublicViewModule } from './public-view/public-view.module.js';
 import { AnalyticsModule } from './analytics/analytics.module.js';
 import { DashboardModule } from './dashboard/dashboard.module.js';
+import { LocationsModule } from './locations/locations.module.js';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 
@@ -18,6 +19,7 @@ import { AppService } from './app.service.js';
     PublicViewModule,
     AnalyticsModule,
     DashboardModule,
+    LocationsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

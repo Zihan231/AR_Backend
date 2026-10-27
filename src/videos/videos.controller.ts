@@ -11,6 +11,7 @@ import {
   BadRequestException,
   Logger,
   UseGuards,
+  Body,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
@@ -72,6 +73,9 @@ export class VideosController {
   )
   async uploadVideo(
     @UploadedFile() file: Express.Multer.File,
+    @Body('location') location: string | undefined,
+    @Body('event') event: string | undefined,
+    @Body('note') note: string | undefined,
     @Req() req: Request,
   ) {
     if (!file) {
@@ -81,7 +85,11 @@ export class VideosController {
     const clientIp = req.ip || req.socket.remoteAddress;
     const userAgent = req.headers['user-agent'];
 
-    return this.videosService.processAndSaveVideo(file, clientIp, userAgent);
+    return this.videosService.processAndSaveVideo(file, clientIp, userAgent, {
+      location,
+      event,
+      note,
+    });
   }
 
   @Get(':token')
@@ -91,6 +99,9 @@ export class VideosController {
       token: video.token,
       filename: video.filename,
       originalName: video.original_name,
+      location: video.location,
+      event: video.event,
+      note: video.note,
       sizeBytes: video.size_bytes,
       mimeType: video.mime_type,
       createdAt: video.created_at,

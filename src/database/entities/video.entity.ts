@@ -51,4 +51,15 @@ export class Video {
 
   @Column({ type: 'text', nullable: true, name: 'user_agent' })
   user_agent: string | null;
+
+  @Index('idx_videos_location')
+  @Column({ type: 'varchar', length: 255, nullable: true, name: 'location' })
+  location: string | null;
+
+  @Index('idx_videos_event')
+  @Column({ type: 'varchar', length: 100, nullable: true, name: 'event' })
+  event: string | null;
+
+  @Column({ type: 'text', nullable: true, name: 'note' })
+  note: string | null;
 }

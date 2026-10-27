@@ -828,6 +828,49 @@ export class DashboardController {
       gap: 0.4rem;
     }
 
+    .sortable-th {
+      cursor: pointer;
+      user-select: none;
+      transition: color 0.15s ease;
+    }
+    .sortable-th:hover {
+      color: var(--primary-light);
+    }
+    .badge-event {
+      display: inline-block;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #818cf8;
+      background: rgba(99, 102, 241, 0.15);
+      border: 1px solid rgba(99, 102, 241, 0.35);
+      border-radius: 6px;
+      padding: 0.2rem 0.5rem;
+      white-space: nowrap;
+    }
+    .badge-location {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #34d399;
+      background: rgba(16, 185, 129, 0.12);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      border-radius: 6px;
+      padding: 0.2rem 0.5rem;
+      white-space: nowrap;
+    }
+    .note-snippet {
+      display: inline-block;
+      max-width: 140px;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      vertical-align: middle;
+    }
+
     .btn-action {
       background: rgba(255, 255, 255, 0.05);
       border: 1px solid var(--surface-border);
@@ -1025,6 +1068,11 @@ export class DashboardController {
           Refresh
         </button>
 
+        <button id="btnOpenLocationsModal" class="btn btn-outline" style="border-color: rgba(16, 185, 129, 0.4); color: #34d399;" title="Add and manage locations">
+          <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+          Locations
+        </button>
+
         <button id="btnOpenUploadModal" class="btn btn-outline" style="display: none; border-color: rgba(99, 102, 241, 0.4); color: var(--primary-light);">
           <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
           Upload Video
@@ -1157,8 +1205,26 @@ export class DashboardController {
           <p id="tableFilterNotice" style="font-size: 0.85rem; color: var(--text-muted);">Manage attendee recordings, view QR codes, and preview clips</p>
         </div>
         <div class="filters-bar">
-          <input type="text" id="searchInput" class="search-input" placeholder="Search by token or filename...">
+          <input type="text" id="searchInput" class="search-input" placeholder="Search token, event, location, note...">
+          <select id="eventFilter" class="date-filter" style="cursor: pointer;">
+            <option value="">All Events</option>
+          </select>
+          <select id="locationFilter" class="date-filter" style="cursor: pointer;">
+            <option value="">All Locations</option>
+          </select>
           <input type="date" id="dateFilter" class="date-filter" title="Filter table by single date">
+          <select id="sortBySelect" class="date-filter" style="cursor: pointer;" title="Sort recordings">
+            <option value="created_at:DESC">Newest First</option>
+            <option value="created_at:ASC">Oldest First</option>
+            <option value="event:ASC">Event (A &rarr; Z)</option>
+            <option value="event:DESC">Event (Z &rarr; A)</option>
+            <option value="location:ASC">Location (A &rarr; Z)</option>
+            <option value="location:DESC">Location (Z &rarr; A)</option>
+            <option value="note:ASC">Note (A &rarr; Z)</option>
+            <option value="note:DESC">Note (Z &rarr; A)</option>
+            <option value="downloads:DESC">Most Downloads</option>
+            <option value="size:DESC">Largest Size</option>
+          </select>
         </div>
       </div>
 
@@ -1167,16 +1233,19 @@ export class DashboardController {
           <thead>
             <tr>
               <th>Token</th>
-              <th>Filename</th>
-              <th>Size</th>
-              <th>Created</th>
-              <th>Downloads</th>
+              <th class="sortable-th" onclick="handleSortHeader('event')">Event <span id="th-event-arrow"></span></th>
+              <th class="sortable-th" onclick="handleSortHeader('location')">Location <span id="th-location-arrow"></span></th>
+              <th class="sortable-th" onclick="handleSortHeader('filename')">Filename <span id="th-filename-arrow"></span></th>
+              <th class="sortable-th" onclick="handleSortHeader('size')">Size <span id="th-size-arrow"></span></th>
+              <th class="sortable-th" onclick="handleSortHeader('created_at')">Created <span id="th-created_at-arrow">&darr;</span></th>
+              <th class="sortable-th" onclick="handleSortHeader('downloads')">Downloads <span id="th-downloads-arrow"></span></th>
+              <th class="sortable-th" onclick="handleSortHeader('note')">Note <span id="th-note-arrow"></span></th>
               <th>Actions</th>
             </tr>
           </thead>
           <tbody id="videosTableBody">
             <tr>
-              <td colspan="6" style="text-align: center; color: var(--text-dim); padding: 2rem;">Loading videos...</td>
+              <td colspan="9" style="text-align: center; color: var(--text-dim); padding: 2rem;">Loading videos...</td>
             </tr>
           </tbody>
         </table>
@@ -1192,6 +1261,37 @@ export class DashboardController {
     </section>
   </div>
 
+  <!-- Manage Locations Modal -->
+  <div id="locationsModal" class="modal-overlay">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title" style="display: flex; align-items: center; gap: 0.5rem;">
+          <span style="color: #34d399;">📍</span> Manage Booth Locations
+        </h3>
+        <button id="closeLocationsModal" class="modal-close">&times;</button>
+      </div>
+
+      <p style="font-size: 0.85rem; color: var(--text-muted);">
+        Add locations here. These locations will automatically appear as a dropdown to select in the videobooth frontend.
+      </p>
+
+      <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
+        <input type="text" id="newLocationInput" class="search-input" placeholder="e.g. Hall A, New York, Booth 2" style="flex: 1;">
+        <button type="button" id="btnAddLocation" class="btn btn-primary" style="white-space: nowrap;">+ Add Location</button>
+      </div>
+      <div id="locationAddError" class="login-error" style="display: none; margin-top: 0.5rem;"></div>
+
+      <div style="margin-top: 1rem;">
+        <h4 style="font-size: 0.82rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.5rem;">
+          Added Locations (<span id="locationsCount">0</span>)
+        </h4>
+        <div id="locationsListContainer" style="display: flex; flex-direction: column; gap: 0.4rem; max-height: 240px; overflow-y: auto; padding-right: 4px;">
+          <div style="text-align: center; color: var(--text-dim); padding: 1.5rem;">Loading locations...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Video Preview Modal -->
   <div id="videoModal" class="modal-overlay">
     <div class="modal-card">
@@ -1202,9 +1302,12 @@ export class DashboardController {
       <div class="modal-video-wrapper">
         <video id="modalVideoPlayer" controls playsinline></video>
       </div>
-      <div style="display: flex; justify-content: space-between; align-items: center;">
-        <span id="modalVideoInfo" style="font-size: 0.85rem; color: var(--text-muted);"></span>
-        <a id="modalDownloadBtn" href="#" class="btn btn-primary" download>Download Video</a>
+      <div style="display: flex; flex-direction: column; gap: 0.6rem; margin-top: 0.5rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+          <span id="modalVideoInfo" style="font-size: 0.85rem; color: var(--text-muted);"></span>
+          <a id="modalDownloadBtn" href="#" class="btn btn-primary" download>Download Video</a>
+        </div>
+        <div id="modalMetaDetails" style="display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap; font-size: 0.82rem;"></div>
       </div>
     </div>
   </div>
@@ -1288,6 +1391,59 @@ export class DashboardController {
     let currentEndDate = '';
     let currentFilterPreset = 'all';
     let currentFilterLabel = 'All Time';
+
+    let currentSortBy = 'created_at';
+    let currentSortOrder = 'DESC';
+    let currentEventFilter = '';
+    let currentLocationFilter = '';
+    let savedLocationsList = [];
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function handleSortHeader(field) {
+      if (currentSortBy === field) {
+        currentSortOrder = currentSortOrder === 'ASC' ? 'DESC' : 'ASC';
+      } else {
+        currentSortBy = field;
+        currentSortOrder = (field === 'created_at' || field === 'size' || field === 'downloads') ? 'DESC' : 'ASC';
+      }
+      updateSortIndicators();
+      currentPage = 1;
+      loadVideos();
+    }
+
+    function updateSortIndicators() {
+      const fields = ['event', 'location', 'filename', 'size', 'created_at', 'downloads', 'note'];
+      fields.forEach(function(f) {
+        const el = document.getElementById('th-' + f + '-arrow');
+        if (el) {
+          if (currentSortBy === f) {
+            el.innerHTML = currentSortOrder === 'ASC' ? ' &uarr;' : ' &darr;';
+            el.style.color = 'var(--primary-light)';
+          } else {
+            el.innerHTML = '';
+          }
+        }
+      });
+      const sortSelect = document.getElementById('sortBySelect');
+      if (sortSelect) {
+        const targetVal = currentSortBy + ':' + currentSortOrder;
+        for (let i = 0; i < sortSelect.options.length; i++) {
+          if (sortSelect.options[i].value === targetVal) {
+            sortSelect.value = targetVal;
+            break;
+          }
+        }
+      }
+    }
 
     function getLocalDateStr(d) {
       const year = d.getFullYear();
@@ -1612,17 +1768,21 @@ export class DashboardController {
           page: currentPage,
           limit: 10,
           search: search || '',
+          sortBy: currentSortBy,
+          sortOrder: currentSortOrder,
         });
 
         if (currentStartDate) params.set('startDate', currentStartDate);
         if (currentEndDate) params.set('endDate', currentEndDate);
+        if (currentEventFilter) params.set('event', currentEventFilter);
+        if (currentLocationFilter) params.set('location', currentLocationFilter);
 
         const res = await fetchWithAuth('/api/videos?' + params.toString());
         const data = await res.json();
 
         if (data.items.length === 0) {
           currentVideosList = [];
-          tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-dim); padding: 2.5rem;">No recordings found for the selected period.</td></tr>';
+          tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; color: var(--text-dim); padding: 2.5rem;">No recordings found for the selected period.</td></tr>';
           document.getElementById('pageInfo').textContent = 'Showing 0 of 0 videos';
           return;
         }
@@ -1635,14 +1795,20 @@ export class DashboardController {
             hour: '2-digit',
             minute: '2-digit'
           });
-          const originalOrFile = v.originalName || v.filename;
+          const originalOrFile = escapeHtml(v.originalName || v.filename);
+          const eventHtml = v.event ? ('<span class="badge-event">' + escapeHtml(v.event) + '</span>') : '<span style="color: var(--text-dim);">&mdash;</span>';
+          const locationHtml = v.location ? ('<span class="badge-location">&#x1F4CD; ' + escapeHtml(v.location) + '</span>') : '<span style="color: var(--text-dim);">&mdash;</span>';
+          const noteHtml = v.note ? ('<span class="note-snippet" title="' + escapeHtml(v.note) + '">' + escapeHtml(v.note.length > 25 ? (v.note.slice(0, 25) + '...') : v.note) + '</span>') : '<span style="color: var(--text-dim);">&mdash;</span>';
 
           return '<tr>' +
             '<td><span class="token-tag">' + v.token.slice(0, 8) + '...</span></td>' +
+            '<td>' + eventHtml + '</td>' +
+            '<td>' + locationHtml + '</td>' +
             '<td><strong>' + originalOrFile + '</strong></td>' +
             '<td>' + v.sizeFormatted + '</td>' +
             '<td style="color: var(--text-muted); font-size: 0.82rem;">' + formattedDate + '</td>' +
             '<td><span style="display: inline-flex; align-items: center; gap: 0.25rem;"><span style="color: #10b981;">&darr;</span> ' + v.downloadCount + '</span></td>' +
+            '<td>' + noteHtml + '</td>' +
             '<td>' +
               '<div class="actions-cell">' +
                 '<button class="btn-action" onclick="actionPreview(' + idx + ')">Preview</button>' +
@@ -1662,7 +1828,7 @@ export class DashboardController {
         document.getElementById('btnPrev').disabled = currentPage <= 1;
         document.getElementById('btnNext').disabled = currentPage >= data.totalPages;
       } catch (err) {
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--rose); padding: 2rem;">Error loading videos.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; color: var(--rose); padding: 2rem;">Error loading videos.</td></tr>';
       }
     }
 
@@ -1750,7 +1916,7 @@ export class DashboardController {
     function actionPreview(idx) {
       const v = currentVideosList[idx];
       if (!v) return;
-      openPreviewModal(v.streamUrl, v.token, v.originalName || v.filename);
+      openPreviewModal(v);
     }
 
     function actionQr(idx) {
@@ -1771,12 +1937,23 @@ export class DashboardController {
       deleteVideoPrompt(v.token);
     }
 
-    function openPreviewModal(streamUrl, token, filename) {
+    function openPreviewModal(video) {
       const modal = document.getElementById('videoModal');
       const player = document.getElementById('modalVideoPlayer');
-      player.src = streamUrl;
-      document.getElementById('modalVideoInfo').textContent = filename + ' (' + token.slice(0, 8) + '...)';
-      document.getElementById('modalDownloadBtn').href = '/api/videos/' + token + '/download';
+      player.src = video.streamUrl;
+      const filename = video.originalName || video.filename;
+      document.getElementById('modalVideoInfo').textContent = filename + ' (' + video.token.slice(0, 8) + '...)';
+      document.getElementById('modalDownloadBtn').href = '/api/videos/' + video.token + '/download';
+
+      const detailsEl = document.getElementById('modalMetaDetails');
+      if (detailsEl) {
+        let pills = [];
+        if (video.event) pills.push('<span class="badge-event">' + escapeHtml(video.event) + '</span>');
+        if (video.location) pills.push('<span class="badge-location">&#x1F4CD; ' + escapeHtml(video.location) + '</span>');
+        if (video.note) pills.push('<span style="color: var(--text-dim);">&#x1F4DD; ' + escapeHtml(video.note) + '</span>');
+        detailsEl.innerHTML = pills.join('');
+      }
+
       modal.classList.add('open');
       player.play().catch(() => {});
     }
@@ -1808,11 +1985,94 @@ export class DashboardController {
       }
     }
 
+    async function loadLocations() {
+      try {
+        const res = await fetch('/api/locations');
+        if (!res.ok) return;
+        savedLocationsList = await res.json();
+
+        // Update location filter dropdown
+        const locFilter = document.getElementById('locationFilter');
+        if (locFilter) {
+          const currentVal = locFilter.value;
+          locFilter.innerHTML = '<option value="">All Locations</option>' +
+            savedLocationsList.map(function(l) {
+              return '<option value="' + escapeHtml(l.name) + '">' + escapeHtml(l.name) + '</option>';
+            }).join('');
+          locFilter.value = currentVal;
+        }
+
+        // Update modal locations list
+        const listEl = document.getElementById('locationsListContainer');
+        const countEl = document.getElementById('locationsCount');
+        if (countEl) countEl.textContent = savedLocationsList.length;
+
+        if (listEl) {
+          if (savedLocationsList.length === 0) {
+            listEl.innerHTML = '<div style="text-align: center; color: var(--text-dim); padding: 1.5rem;">No locations added yet. Add one above!</div>';
+          } else {
+            listEl.innerHTML = savedLocationsList.map(function(l) {
+              return '<div style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.04); border: 1px solid var(--surface-border); border-radius: 8px; padding: 0.5rem 0.85rem;">' +
+                '<span style="font-size: 0.88rem; font-weight: 500; display: inline-flex; align-items: center; gap: 0.4rem;">' +
+                  '<span style="color: #34d399;">📍</span> ' + escapeHtml(l.name) +
+                '</span>' +
+                '<button type="button" class="btn-action btn-delete" onclick="handleDeleteLocation(' + l.id + ')" title="Delete location">&times; Delete</button>' +
+              '</div>';
+            }).join('');
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load locations', err);
+      }
+    }
+
+    async function handleAddLocation() {
+      const input = document.getElementById('newLocationInput');
+      const errorEl = document.getElementById('locationAddError');
+      const name = input ? input.value.trim() : '';
+      if (!name) return;
+
+      errorEl.style.display = 'none';
+      try {
+        const res = await fetchWithAuth('/api/locations', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: name }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          errorEl.textContent = data.message || 'Failed to add location';
+          errorEl.style.display = 'flex';
+          return;
+        }
+        input.value = '';
+        await loadLocations();
+      } catch (err) {
+        errorEl.textContent = err.message || 'Network error';
+        errorEl.style.display = 'flex';
+      }
+    }
+
+    async function handleDeleteLocation(id) {
+      if (!confirm('Are you sure you want to delete this location?')) return;
+      try {
+        const res = await fetchWithAuth('/api/locations/' + id, { method: 'DELETE' });
+        if (res.ok) {
+          await loadLocations();
+        } else {
+          alert('Failed to delete location');
+        }
+      } catch (err) {
+        alert('Network error while deleting location');
+      }
+    }
+
     function refreshAll() {
       loadSummary();
       loadDailyChart();
       loadHourlyChart();
       loadVideos();
+      loadLocations();
     }
 
     function startDashboard() {
@@ -1917,7 +2177,32 @@ export class DashboardController {
         resetDateFilter();
       });
 
-      // Search & Date filters
+      // Search & Date & Event & Sort filters
+      const eventFilterEl = document.getElementById('eventFilter');
+      if (eventFilterEl && eventFilterEl.options.length <= 1) {
+        for (let i = 1; i <= 100; i++) {
+          const opt = document.createElement('option');
+          opt.value = 'Event ' + i;
+          opt.textContent = 'Event ' + i;
+          eventFilterEl.appendChild(opt);
+        }
+      }
+
+      document.getElementById('eventFilter').addEventListener('change', (e) => {
+        currentEventFilter = e.target.value;
+        currentPage = 1;
+        loadVideos();
+      });
+
+      document.getElementById('sortBySelect').addEventListener('change', (e) => {
+        const parts = e.target.value.split(':');
+        currentSortBy = parts[0] || 'created_at';
+        currentSortOrder = parts[1] || 'DESC';
+        updateSortIndicators();
+        currentPage = 1;
+        loadVideos();
+      });
+
       document.getElementById('searchInput').addEventListener('input', () => {
         clearTimeout(searchDebounce);
         searchDebounce = setTimeout(() => {
@@ -1926,12 +2211,31 @@ export class DashboardController {
         }, 300);
       });
 
-      document.getElementById('dateFilter').addEventListener('change', (e) => {
-        const val = e.target.value;
-        if (val) {
-          applyDateFilter('custom', val, val, val);
-        } else {
-          resetDateFilter();
+      document.getElementById('locationFilter').addEventListener('change', (e) => {
+        currentLocationFilter = e.target.value;
+        currentPage = 1;
+        loadVideos();
+      });
+
+      // Locations Modal listeners
+      document.getElementById('btnOpenLocationsModal').addEventListener('click', () => {
+        document.getElementById('locationsModal').classList.add('open');
+        document.getElementById('locationAddError').style.display = 'none';
+        loadLocations();
+      });
+
+      document.getElementById('closeLocationsModal').addEventListener('click', () => {
+        document.getElementById('locationsModal').classList.remove('open');
+      });
+
+      document.getElementById('btnAddLocation').addEventListener('click', () => {
+        handleAddLocation();
+      });
+
+      document.getElementById('newLocationInput').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          handleAddLocation();
         }
       });
 

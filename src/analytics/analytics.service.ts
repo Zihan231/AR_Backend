@@ -226,13 +226,27 @@ export class AnalyticsService {
     date = '',
     startDate = '',
     endDate = '',
+    location = '',
+    event = '',
+    sortBy = 'created_at',
+    sortOrder: 'ASC' | 'DESC' = 'DESC',
   ) {
     const qb = this.videoRepo.createQueryBuilder('video');
 
     if (search && search.trim() !== '') {
-      qb.andWhere('(video.token LIKE :search OR video.original_name LIKE :search)', {
-        search: `%${search.trim()}%`,
-      });
+      const s = `%${search.trim()}%`;
+      qb.andWhere(
+        '(video.token LIKE :search OR video.original_name LIKE :search OR video.location LIKE :search OR video.event LIKE :search OR video.note LIKE :search)',
+        { search: s },
+      );
+    }
+
+    if (location && location.trim() !== '') {
+      qb.andWhere('video.location = :location', { location: location.trim() });
+    }
+
+    if (event && event.trim() !== '') {
+      qb.andWhere('video.event = :event', { event: event.trim() });
     }
 
     if (date && date.trim() !== '') {
@@ -252,7 +266,24 @@ export class AnalyticsService {
       qb.andWhere('video.created_date <= :eDate', { eDate: endDate.trim() });
     }
 
-    qb.orderBy('video.created_at', 'DESC')
+    const allowedSortFields: Record<string, string> = {
+      created_at: 'video.created_at',
+      createdAt: 'video.created_at',
+      date: 'video.created_at',
+      location: 'video.location',
+      event: 'video.event',
+      note: 'video.note',
+      size: 'video.size_bytes',
+      size_bytes: 'video.size_bytes',
+      downloads: 'video.download_count',
+      download_count: 'video.download_count',
+      filename: 'video.original_name',
+      originalName: 'video.original_name',
+    };
+    const orderColumn = allowedSortFields[sortBy] || 'video.created_at';
+    const orderDirection = sortOrder?.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+
+    qb.orderBy(orderColumn, orderDirection)
       .skip((page - 1) * limit)
       .take(limit);
 
@@ -265,6 +296,9 @@ export class AnalyticsService {
         token: v.token,
         filename: v.filename,
         originalName: v.original_name,
+        location: v.location || null,
+        event: v.event || null,
+        note: v.note || null,
         sizeBytes,
         sizeFormatted: this.formatBytes(sizeBytes),
         mimeType: v.mime_type,
@@ -309,7 +343,19 @@ export class AnalyticsService {
     qb.orderBy('video.created_at', 'DESC');
     const rows = await qb.getMany();
 
-    const headers = ['Token', 'Original Name', 'File Name', 'Size (Bytes)', 'Created At', 'Date', 'Download Count', 'View URL'];
+    const headers = [
+      'Token',
+      'Original Name',
+      'File Name',
+      'Event',
+      'Location',
+      'Note',
+      'Size (Bytes)',
+      'Created At',
+      'Date',
+      'Download Count',
+      'View URL',
+    ];
     const lines = [headers.join(',')];
 
     for (const r of rows) {
@@ -318,6 +364,9 @@ export class AnalyticsService {
         `"${r.token}"`,
         `"${(r.original_name || '').replace(/"/g, '""')}"`,
         `"${r.filename}"`,
+        `"${(r.event || '').replace(/"/g, '""')}"`,
+        `"${(r.location || '').replace(/"/g, '""')}"`,
+        `"${(r.note || '').replace(/"/g, '""')}"`,
         Number(r.size_bytes),
         `"${r.created_at}"`,
         `"${r.created_date}"`,

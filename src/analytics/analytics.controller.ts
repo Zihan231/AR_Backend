@@ -41,10 +41,26 @@ export class AnalyticsController {
     @Query('date') date?: string,
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
+    @Query('location') location?: string,
+    @Query('event') event?: string,
+    @Query('sortBy') sortBy?: string,
+    @Query('sortOrder') sortOrder?: string,
   ) {
     const pageNum = page ? Math.max(parseInt(page, 10), 1) : 1;
     const limitNum = limit ? Math.min(Math.max(parseInt(limit, 10), 1), 100) : 20;
-    return this.analyticsService.getVideos(pageNum, limitNum, search, date, startDate, endDate);
+    const orderUpper = sortOrder?.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+    return this.analyticsService.getVideos(
+      pageNum,
+      limitNum,
+      search,
+      date,
+      startDate,
+      endDate,
+      location,
+      event,
+      sortBy || 'created_at',
+      orderUpper,
+    );
   }
 
   @Get('analytics/export-csv')

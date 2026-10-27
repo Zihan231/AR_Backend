@@ -5,6 +5,7 @@ import { AppConfigModule } from '../config/config.module.js';
 import { AppConfigService } from '../config/app-config.service.js';
 import { Video } from './entities/video.entity.js';
 import { DownloadLog } from './entities/download-log.entity.js';
+import { Location } from './entities/location.entity.js';
 
 @Global()
 @Module({
@@ -38,7 +39,7 @@ import { DownloadLog } from './entities/download-log.entity.js';
           password: config.dbPassword,
           database: config.dbName,
           ssl: config.dbSsl || false,
-          entities: [Video, DownloadLog],
+          entities: [Video, DownloadLog, Location],
           synchronize: true, // Automatically synchronize entities with schema in dev
           logging: false,
           extra: {
@@ -51,7 +52,7 @@ import { DownloadLog } from './entities/download-log.entity.js';
         };
       },
     }),
-    TypeOrmModule.forFeature([Video, DownloadLog]),
+    TypeOrmModule.forFeature([Video, DownloadLog, Location]),
   ],
   exports: [TypeOrmModule],
 })
