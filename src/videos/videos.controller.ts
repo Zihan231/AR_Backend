@@ -75,6 +75,7 @@ export class VideosController {
     @UploadedFile() file: Express.Multer.File,
     @Body('location') location: string | undefined,
     @Body('event') event: string | undefined,
+    @Body('eventId') eventId: string | undefined,
     @Body('note') note: string | undefined,
     @Req() req: Request,
   ) {
@@ -88,6 +89,7 @@ export class VideosController {
     return this.videosService.processAndSaveVideo(file, clientIp, userAgent, {
       location,
       event,
+      eventId,
       note,
     });
   }

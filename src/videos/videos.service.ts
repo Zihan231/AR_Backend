@@ -14,6 +14,7 @@ import { v4 as uuidv4 } from 'uuid';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { Request, Response } from 'express';
+import { BoothEvent } from '../database/entities/event.entity.js';
 
 export type VideoRecord = Video;
 
@@ -43,6 +44,8 @@ export class VideosService {
     private readonly videoRepo: Repository<Video>,
     @InjectRepository(DownloadLog)
     private readonly downloadLogRepo: Repository<DownloadLog>,
+    @InjectRepository(BoothEvent)
+    private readonly eventRepo: Repository<BoothEvent>,
     private readonly appConfig: AppConfigService,
     private readonly dataSource: DataSource,
   ) {}
@@ -51,10 +54,25 @@ export class VideosService {
     file: Express.Multer.File,
     clientIp?: string,
     userAgent?: string,
-    metadata?: { location?: string; event?: string; note?: string },
+    metadata?: { location?: string; event?: string; eventId?: string; note?: string },
   ): Promise<UploadResponse> {
     if (!file) {
       throw new BadRequestException('No video file provided');
+    }
+
+    let locationVal = metadata?.location && metadata.location.trim() !== '' ? metadata.location.trim() : null;
+    let eventVal = metadata?.event && metadata.event.trim() !== '' ? metadata.event.trim() : null;
+    if (metadata?.eventId) {
+      const eventId = Number.parseInt(metadata.eventId, 10);
+      if (!Number.isInteger(eventId) || eventId < 1) {
+        throw new BadRequestException('Invalid event selection');
+      }
+      const selectedEvent = await this.eventRepo.findOne({ where: { id: eventId } });
+      if (!selectedEvent) {
+        throw new BadRequestException('Selected event no longer exists');
+      }
+      eventVal = `Event ${selectedEvent.event_number} - ${selectedEvent.name}`;
+      locationVal = selectedEvent.location;
     }
 
     const token = uuidv4();
@@ -121,8 +139,6 @@ export class VideosService {
 
     const fileSize = file.size || (fs.existsSync(targetFilePath) ? fs.statSync(targetFilePath).size : 0);
 
-    const locationVal = metadata?.location && metadata.location.trim() !== '' ? metadata.location.trim() : null;
-    const eventVal = metadata?.event && metadata.event.trim() !== '' ? metadata.event.trim() : null;
     const noteVal = metadata?.note && metadata.note.trim() !== '' ? metadata.note.trim() : null;
 
     // Save record to database using TypeORM

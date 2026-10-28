@@ -7,6 +7,7 @@ import { PublicViewModule } from './public-view/public-view.module.js';
 import { AnalyticsModule } from './analytics/analytics.module.js';
 import { DashboardModule } from './dashboard/dashboard.module.js';
 import { LocationsModule } from './locations/locations.module.js';
+import { EventsModule } from './events/events.module.js';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 
@@ -20,6 +21,7 @@ import { AppService } from './app.service.js';
     AnalyticsModule,
     DashboardModule,
     LocationsModule,
+    EventsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
