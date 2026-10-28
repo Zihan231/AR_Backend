@@ -21,6 +21,7 @@ import * as fs from 'node:fs';
 import { VideosService } from './videos.service.js';
 import { AppConfigService } from '../config/app-config.service.js';
 import { AuthGuard } from '../auth/auth.guard.js';
+import { Roles } from '../auth/roles.decorator.js';
 import type { Request, Response } from 'express';
 
 // Setup temporary upload storage inside application storage directory to prevent cross-device (EXDEV) errors
@@ -145,6 +146,7 @@ export class VideosController {
   }
 
   @UseGuards(AuthGuard)
+  @Roles('admin')
   @Delete(':token')
   async deleteVideo(@Param('token') token: string) {
     await this.videosService.deleteVideo(token);

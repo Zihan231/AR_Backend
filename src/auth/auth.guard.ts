@@ -2,14 +2,20 @@ import {
   Injectable,
   CanActivate,
   ExecutionContext,
+  ForbiddenException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { AuthService } from './auth.service.js';
 import type { Request } from 'express';
+import { Reflector } from '@nestjs/core';
+import { ROLES_KEY } from './roles.decorator.js';
 
 @Injectable()
 export class AuthGuard implements CanActivate {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly reflector: Reflector,
+  ) {}
 
   canActivate(context: ExecutionContext): boolean {
     const req = context.switchToHttp().getRequest<Request>();
@@ -20,6 +26,13 @@ export class AuthGuard implements CanActivate {
     }
 
     const payload = this.authService.verifyToken(token);
+    const requiredRoles = this.reflector.getAllAndOverride<string[]>(ROLES_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
+    if (requiredRoles?.length && !requiredRoles.includes(payload.role)) {
+      throw new ForbiddenException('This account has read-only access');
+    }
     (req as any).user = payload;
     return true;
   }

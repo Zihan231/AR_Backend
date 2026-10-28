@@ -1087,7 +1087,7 @@ export class DashboardController {
           Refresh
         </button>
 
-        <button id="btnOpenEventsModal" class="btn btn-outline" style="border-color: rgba(16, 185, 129, 0.4); color: #34d399;" title="Add and manage events">
+        <button id="btnOpenEventsModal" class="btn btn-outline admin-only" style="display: none; border-color: rgba(16, 185, 129, 0.4); color: #34d399;" title="Add and manage events">
           <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
           Events
         </button>
@@ -1410,6 +1410,7 @@ export class DashboardController {
     let searchDebounce = null;
     let refreshInterval = null;
     let currentVideosList = [];
+    let currentUserRole = 'client';
 
     let currentStartDate = '';
     let currentEndDate = '';
@@ -1529,6 +1530,17 @@ export class DashboardController {
       }
     }
 
+    function applyRole(role) {
+      currentUserRole = role === 'admin' ? 'admin' : 'client';
+      document.querySelectorAll('.admin-only').forEach(function(element) {
+        if (currentUserRole === 'admin') {
+          element.style.removeProperty('display');
+        } else {
+          element.style.display = 'none';
+        }
+      });
+    }
+
     async function fetchWithAuth(url, options = {}) {
       const token = getStoredToken();
       const headers = Object.assign({}, options.headers || {});
@@ -1547,6 +1559,7 @@ export class DashboardController {
     function showLoginScreen(errorMessage = '') {
       document.documentElement.classList.remove('is-authenticated');
       setStoredToken('');
+      applyRole('client');
       if (refreshInterval) {
         clearInterval(refreshInterval);
         refreshInterval = null;
@@ -1565,14 +1578,15 @@ export class DashboardController {
       }
     }
 
-    function hideLoginScreen(username = 'Admin') {
+    function hideLoginScreen(username = 'Admin', role = 'admin') {
       document.documentElement.classList.add('is-authenticated');
+      applyRole(role);
       const loginScreen = document.getElementById('loginScreen');
       const dashboard = document.getElementById('dashboardContainer');
       loginScreen.classList.add('hidden');
       dashboard.classList.remove('blurred');
 
-      document.getElementById('headerUser').textContent = username;
+      document.getElementById('headerUser').textContent = username + (currentUserRole === 'client' ? ' (Read only)' : '');
       document.getElementById('avatarInitial').textContent = (username[0] || 'A').toUpperCase();
 
       updateExportCsvHref();
@@ -1591,7 +1605,7 @@ export class DashboardController {
         });
         if (res.ok) {
           const data = await res.json();
-          hideLoginScreen(data.user?.username || 'Admin');
+          hideLoginScreen(data.user?.username || 'Admin', data.user?.role || 'client');
           startDashboard();
         } else {
           showLoginScreen();
@@ -1856,7 +1870,7 @@ export class DashboardController {
                 '<button class="btn-action" onclick="actionQr(' + idx + ')">QR</button>' +
                 '<button class="btn-action" onclick="actionCopy(' + idx + ')">Copy</button>' +
                 '<a href="' + downloadUrl + '" class="btn-action" download>Save</a>' +
-                '<button class="btn-action btn-delete" onclick="actionDelete(' + idx + ')">Delete</button>' +
+                (currentUserRole === 'admin' ? '<button class="btn-action btn-delete" onclick="actionDelete(' + idx + ')">Delete</button>' : '') +
               '</div>' +
             '</td>' +
           '</tr>';
@@ -2217,7 +2231,7 @@ export class DashboardController {
 
           if (res.ok && data.success) {
             setStoredToken(data.token);
-            hideLoginScreen(data.user?.username || username);
+            hideLoginScreen(data.user?.username || username, data.user?.role || 'client');
             startDashboard();
           } else {
             errEl.textContent = data.message || 'Invalid username or password';

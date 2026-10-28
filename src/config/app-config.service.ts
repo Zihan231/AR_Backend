@@ -25,6 +25,8 @@ export class AppConfigService {
   // Dashboard Authentication
   readonly adminUsername: string = process.env.ADMIN_USERNAME || 'admin';
   readonly adminPassword: string = process.env.ADMIN_PASSWORD || 'admin123';
+  readonly clientUsername: string = process.env.CLIENT_USERNAME || '';
+  readonly clientPassword: string = process.env.CLIENT_PASSWORD || '';
   readonly jwtSecret: string = process.env.JWT_SECRET || 'ar_booth_super_secret_jwt_key_2026';
 
   constructor() {

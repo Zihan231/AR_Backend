@@ -11,6 +11,7 @@ import {
 } from '@nestjs/common';
 import { AuthGuard } from '../auth/auth.guard.js';
 import { EventsService } from './events.service.js';
+import { Roles } from '../auth/roles.decorator.js';
 
 @Controller('api/events')
 export class EventsController {
@@ -34,6 +35,7 @@ export class EventsController {
   }
 
   @UseGuards(AuthGuard)
+  @Roles('admin')
   @Post()
   async addEvent(
     @Body('name') name: string,
@@ -43,6 +45,7 @@ export class EventsController {
   }
 
   @UseGuards(AuthGuard)
+  @Roles('admin')
   @Patch(':id')
   async updateEvent(
     @Param('id', ParseIntPipe) id: number,
@@ -53,6 +56,7 @@ export class EventsController {
   }
 
   @UseGuards(AuthGuard)
+  @Roles('admin')
   @Patch(':id/status')
   async setEventActive(
     @Param('id', ParseIntPipe) id: number,
@@ -62,6 +66,7 @@ export class EventsController {
   }
 
   @UseGuards(AuthGuard)
+  @Roles('admin')
   @Delete(':id')
   async deleteEvent(@Param('id', ParseIntPipe) id: number) {
     return this.eventsService.deleteEvent(id);

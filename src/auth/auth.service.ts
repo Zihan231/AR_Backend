@@ -19,10 +19,12 @@ export class AuthService {
 
   constructor(private readonly appConfig: AppConfigService) {}
 
-  validateCredentials(username: string, pass: string): boolean {
-    const expectedUser = this.appConfig.adminUsername;
-    const expectedPass = this.appConfig.adminPassword;
-
+  private credentialsMatch(
+    username: string,
+    pass: string,
+    expectedUser: string,
+    expectedPass: string,
+  ): boolean {
     if (!username || !pass) {
       return false;
     }
@@ -43,12 +45,38 @@ export class AuthService {
     return userMatch && passMatch;
   }
 
-  generateToken(username: string): string {
+  validateCredentials(username: string, pass: string): 'admin' | 'client' | null {
+    if (
+      this.credentialsMatch(
+        username,
+        pass,
+        this.appConfig.adminUsername,
+        this.appConfig.adminPassword,
+      )
+    ) {
+      return 'admin';
+    }
+    if (
+      this.appConfig.clientUsername &&
+      this.appConfig.clientPassword &&
+      this.credentialsMatch(
+        username,
+        pass,
+        this.appConfig.clientUsername,
+        this.appConfig.clientPassword,
+      )
+    ) {
+      return 'client';
+    }
+    return null;
+  }
+
+  generateToken(username: string, role: 'admin' | 'client'): string {
     const now = Math.floor(Date.now() / 1000);
     // Token valid for 24 hours
     const payload: TokenPayload = {
       username,
-      role: 'admin',
+      role,
       iat: now,
       exp: now + 24 * 60 * 60,
     };
@@ -109,19 +137,20 @@ export class AuthService {
   }
 
   login(username: string, pass: string): { success: boolean; token: string; user: { username: string; role: string } } {
-    if (!this.validateCredentials(username, pass)) {
+    const role = this.validateCredentials(username, pass);
+    if (!role) {
       throw new UnauthorizedException('Invalid username or password');
     }
 
-    const token = this.generateToken(username);
-    this.logger.log(`Admin '${username}' logged in successfully`);
+    const token = this.generateToken(username, role);
+    this.logger.log(`${role === 'admin' ? 'Admin' : 'Read-only client'} '${username}' logged in successfully`);
 
     return {
       success: true,
       token,
       user: {
         username,
-        role: 'admin',
+        role,
       },
     };
   }
